@@ -299,5 +299,67 @@ contract('MultiSigWallet', ([tokenOwner, signer1, signer2, signer3, signer4, ali
             assert.equal(transactions[0],0)
             assert.equal(transactions[1],2)
         })
+
+        it.only('should allow deposit and withdraw of tokens / native coin', async () => {
+
+            await this.YraceToken.setMaster(alice, {from : alice})
+            await this.YraceToken.mint(this.MultiSigWallet.address,"10000", {from : alice})
+            await web3.eth.sendTransaction({to: this.MultiSigWallet.address, from : signer1, value : web3.utils.toWei("1", "ether")});
+
+            //withdraw native coins
+            let contract = new web3.eth.Contract(SigABI.abi)
+            let callData = await contract.methods.withdrawNative(signer1,BigInt(250000000000000000)).encodeABI();
+            let tx = await this.MultiSigWallet.submitTransaction(this.MultiSigWallet.address, 0,callData, {from: signer1});
+            let transactionId = tx.receipt.logs[0].args["0"];
+              
+            await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer2});
+            await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer3});
+
+            assert.equal(await web3.eth.getBalance(this.MultiSigWallet.address)/1,750000000000000000)
+
+            //withdraw by non-owner
+            callData = await contract.methods.withdrawNative(alice,BigInt(10000000000000000000)).encodeABI();
+            tx = await this.MultiSigWallet.submitTransaction(this.MultiSigWallet.address, 0,callData, {from: signer1});
+            transactionId = tx.receipt.logs[0].args["0"];
+
+            await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer2});
+            await expectRevert(
+                this.MultiSigWallet.confirmTransaction(transactionId, {from: signer3}),
+                "low level call failed"
+            ) 
+
+            //withdraw huge amount by owner
+            callData = await contract.methods.withdrawNative(signer1,BigInt(10000000000000000000)).encodeABI();
+            tx = await this.MultiSigWallet.submitTransaction(this.MultiSigWallet.address, 0,callData, {from: signer1});
+            transactionId = tx.receipt.logs[0].args["0"];
+
+            await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer2});
+            await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer3});
+
+            assert.equal(await web3.eth.getBalance(this.MultiSigWallet.address),0)
+
+            //withdraw BEP20 token by owner
+            callData = await contract.methods.withdrawToken(this.YraceToken.address,signer1,1000).encodeABI();
+            tx = await this.MultiSigWallet.submitTransaction(this.MultiSigWallet.address, 0,callData, {from: signer1});
+            transactionId = tx.receipt.logs[0].args["0"];
+
+            await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer2});
+            await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer3});
+
+            assert.equal(await this.YraceToken.balanceOf(this.MultiSigWallet.address),9000)
+            assert.equal(await this.YraceToken.balanceOf(signer1),1000)
+
+            callData = await contract.methods.withdrawToken(this.YraceToken.address,signer3,5000).encodeABI();
+            tx = await this.MultiSigWallet.submitTransaction(this.MultiSigWallet.address, 0,callData, {from: signer3});
+            transactionId = tx.receipt.logs[0].args["0"];
+
+            await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer2});
+            await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer1});
+
+            assert.equal(await this.YraceToken.balanceOf(this.MultiSigWallet.address),4000)
+            assert.equal(await this.YraceToken.balanceOf(signer3),5000)
+
+            
+        })
     })
 })

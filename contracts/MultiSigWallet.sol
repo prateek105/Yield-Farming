@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
+import "./libs/SafeBEP20.sol";
+
+
 /// @title Multisignature wallet - Allows multiple parties to agree on transactions before execution.
 contract MultiSigWallet {
-
+    using SafeBEP20 for IBEP20;
     /*
      *  Events
      */
@@ -65,7 +68,7 @@ contract MultiSigWallet {
     modifier transactionExists(uint transactionId) {
         require(transactions[transactionId].destination != address(0),
         "Invalid transaction"
-        ); //changed
+        );
         _;
     }
 
@@ -93,7 +96,7 @@ contract MultiSigWallet {
     modifier notNull(address _address) {
         require(_address != address(0),
          "Zero address"
-        ); //changed
+        ); 
         _;
     }
 
@@ -159,7 +162,7 @@ contract MultiSigWallet {
                 owners[i] = owners[owners.length - 1];
                 break;
             }
-        owners.pop();  //changed
+        owners.pop();
         if (required > owners.length)
             changeRequirement(owners.length);
         emit OwnerRemoval(owner);
@@ -206,7 +209,7 @@ contract MultiSigWallet {
         returns (uint transactionId)
     {
         require(value == 0, "ETH sent");
-        transactionId = addTransaction(destination, value, data);
+        transactionId = addTransaction(destination, data);
         confirmTransaction(transactionId);
     }
 
@@ -246,7 +249,7 @@ contract MultiSigWallet {
         if (isConfirmed(transactionId)) {
             Transaction storage txn = transactions[transactionId];
             txn.executed = true;
-            if (external_call(txn.destination, txn.value, txn.data))
+            if (external_call(txn.destination, txn.data))
                 emit Execution(transactionId);
             else {
                 emit ExecutionFailure(transactionId);
@@ -257,12 +260,27 @@ contract MultiSigWallet {
 
     // call has been separated into its own function in order to take advantage
     // of the Solidity's code generator to produce a loop that copies tx.data into memory.
-    function external_call(address destination, uint value, bytes memory data) internal returns (bool) {
-        require(msg.value == 0, "ETH sent");
-        (bool success, ) = destination.call{value:value}(data);
+    function external_call(address destination, bytes memory data) internal returns (bool) {
+        (bool success, ) = destination.call{value:msg.value}(data);
         require(success, "low level call failed");
         return true;
 
+    }
+
+    /// @dev Allows owner to withdraw native currency form wallet
+    /// @param receiver Address of user withdrawing 
+    /// @param _amount Amount to be withdrawn
+    function withdrawNative(address receiver,uint _amount) public payable onlyWallet ownerExists(receiver){
+        uint256 amount = _amount < address(this).balance ? _amount : address(this).balance;
+        payable(receiver).transfer(amount);
+    }
+
+    /// @dev Allows owner to withdraw tokens form wallet
+    /// @param token Contract address of token to be withdrawn
+    /// @param receiver Address of user withdrawing 
+    /// @param _amount Amount to be withdrawn
+    function withdrawToken(IBEP20 token ,address receiver,uint _amount) public payable onlyWallet ownerExists(receiver){
+        token.safeTransfer(receiver, _amount);
     }
 
     /// @dev Returns the confirmation status of a transaction.
@@ -271,7 +289,7 @@ contract MultiSigWallet {
     function isConfirmed(uint transactionId)
         public
         view
-        returns (bool status) //changed
+        returns (bool status)
     {
         uint count = 0;
         for (uint i=0; i<owners.length; i++) {
@@ -287,10 +305,9 @@ contract MultiSigWallet {
      */
     /// @dev Adds a new transaction to the transaction mapping, if transaction does not exist yet.
     /// @param destination Transaction target address.
-    /// @param value Transaction ether value.
     /// @param data Transaction data payload.
     /// @return transactionId Returns transaction ID.
-    function addTransaction(address destination, uint value, bytes memory data)
+    function addTransaction(address destination, bytes memory data)
         internal
         notNull(destination)
         returns (uint transactionId)
@@ -298,7 +315,7 @@ contract MultiSigWallet {
         transactionId = transactionCount;
         transactions[transactionId] = Transaction({
             destination: destination,
-            value: value,
+            value: msg.value,
             data: data,
             executed: false
         });
