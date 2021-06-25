@@ -489,7 +489,7 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
         }) 
 
         it('should switch master from seed to LP after staking period', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1900,2000,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1900,2000,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
  
             await this.master.add('100', this.lp.address,1000, true)

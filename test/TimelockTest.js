@@ -80,7 +80,7 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
         })
 
         it('should allow to queue and execute txns', async ()=>{
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200,1000, feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200, feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true, { from: alice})
@@ -156,7 +156,7 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
         }) 
 
         it('should allow cancel txns', async ()=>{
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 150,250,1000, feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 150,250, feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true, { from: alice})
@@ -199,7 +199,7 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
         }) 
 
         it('should allow setup of farming', async ()=>{
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 200,300,1000, feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 200,300, feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true, { from: alice})

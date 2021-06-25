@@ -139,7 +139,7 @@ contract('MultiSigWallet', ([tokenOwner, signer1, signer2, signer3, signer4, ali
         })
 
         it('should allow to add/modify pools using timelock', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200,1000, tokenOwner, { from: tokenOwner })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200, tokenOwner, { from: tokenOwner })
             this.timelock = await Timelock.new(this.MultiSigWallet.address, 21600,{ from: tokenOwner })
             await this.master.transferOwnership(this.timelock.address,{from: tokenOwner})
 
@@ -227,7 +227,7 @@ contract('MultiSigWallet', ([tokenOwner, signer1, signer2, signer3, signer4, ali
         })
 
         it('should give proper confirmations list', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200,1000, tokenOwner, { from: tokenOwner })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200, tokenOwner, { from: tokenOwner })
             this.timelock = await Timelock.new(this.MultiSigWallet.address, 21600,{ from: tokenOwner })
             await this.master.transferOwnership(this.timelock.address,{from: tokenOwner})
 
