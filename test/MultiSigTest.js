@@ -300,7 +300,7 @@ contract('MultiSigWallet', ([tokenOwner, signer1, signer2, signer3, signer4, ali
             assert.equal(transactions[1],2)
         })
 
-        it.only('should allow deposit and withdraw of tokens / native coin', async () => {
+        it('should allow deposit and withdraw of tokens / native coin', async () => {
 
             await this.YraceToken.setMaster(alice, {from : alice})
             await this.YraceToken.mint(this.MultiSigWallet.address,"10000", {from : alice})
