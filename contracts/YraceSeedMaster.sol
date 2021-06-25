@@ -78,14 +78,13 @@ contract YraceSeedMaster is Ownable {
         uint256 _rewardPerBlock,
         uint256 _START_BLOCK,
         uint256 _END_BLOCK,
-        uint256 _seedPoolAmount,
         address _feeAddress
     ) {
         yRace = _yRace;
         REWARD_PER_BLOCK = _rewardPerBlock;
         START_BLOCK = _START_BLOCK;
         END_BLOCK = _END_BLOCK;
-        seedPoolAmount = _seedPoolAmount;
+        seedPoolAmount = (END_BLOCK-START_BLOCK)*REWARD_PER_BLOCK;
         feeAddress = _feeAddress;
     }
 
