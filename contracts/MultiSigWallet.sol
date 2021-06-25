@@ -206,10 +206,10 @@ contract MultiSigWallet {
     /// @return transactionId Returns transaction ID.
     function submitTransaction(address destination, uint value, bytes memory data)
         public
+        payable
         returns (uint transactionId)
     {
-        require(value == 0, "ETH sent");
-        transactionId = addTransaction(destination, data);
+        transactionId = addTransaction(destination,value, data);
         confirmTransaction(transactionId);
     }
 
@@ -249,7 +249,7 @@ contract MultiSigWallet {
         if (isConfirmed(transactionId)) {
             Transaction storage txn = transactions[transactionId];
             txn.executed = true;
-            if (external_call(txn.destination, txn.data))
+            if (external_call(txn.destination,txn.value, txn.data))
                 emit Execution(transactionId);
             else {
                 emit ExecutionFailure(transactionId);
@@ -260,8 +260,8 @@ contract MultiSigWallet {
 
     // call has been separated into its own function in order to take advantage
     // of the Solidity's code generator to produce a loop that copies tx.data into memory.
-    function external_call(address destination, bytes memory data) internal returns (bool) {
-        (bool success, ) = destination.call{value:msg.value}(data);
+    function external_call(address destination,uint value, bytes memory data) internal returns (bool) {
+        (bool success, ) = destination.call{value:value}(data);
         require(success, "low level call failed");
         return true;
 
@@ -307,7 +307,7 @@ contract MultiSigWallet {
     /// @param destination Transaction target address.
     /// @param data Transaction data payload.
     /// @return transactionId Returns transaction ID.
-    function addTransaction(address destination, bytes memory data)
+    function addTransaction(address destination,uint value, bytes memory data)
         internal
         notNull(destination)
         returns (uint transactionId)
@@ -315,7 +315,7 @@ contract MultiSigWallet {
         transactionId = transactionCount;
         transactions[transactionId] = Transaction({
             destination: destination,
-            value: msg.value,
+            value: value,
             data: data,
             executed: false
         });
