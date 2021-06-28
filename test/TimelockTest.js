@@ -79,7 +79,7 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
 
         })
 
-        it.only('should allow to queue and execute txns', async ()=>{
+        it('should allow to queue and execute txns', async ()=>{
             this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200, feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
 
