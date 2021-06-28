@@ -79,7 +79,7 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
 
         })
 
-        it('should allow to queue and execute txns', async ()=>{
+        it.only('should allow to queue and execute txns', async ()=>{
             this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200, feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
 
@@ -105,7 +105,7 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
             await expectRevert(
                 this.timelock.queueTransaction(
                     this.master.address, 0,signature,data,eta, {from : alice}),
-                "Timelock::queueTransaction: Call must come from admin."
+                "Timelock: Call must come from admin."
             ) 
 
             await expectRevert(
