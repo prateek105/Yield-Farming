@@ -1,0 +1,7 @@
+const TESTNET_RPC_URL = 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+const TL_ADDRESS = "0x9ebB490ccdefb461Ab2A1c97b3e6BD35fF2f5b65"
+const SEED_ADDRESS = "0x1DFeB2B4e52d47ffA4961dbdbc0452c6902AEf30"
+const LP_ADDRESS = "0xbc0689e97fbB15f31B1d36c48C3d11FB9537b4EF"
+
+module.exports = {TESTNET_RPC_URL,TL_ADDRESS,SEED_ADDRESS,LP_ADDRESS};
+

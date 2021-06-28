@@ -10,7 +10,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
     })
 
     it('should set correct state variables', async () => {
-        this.master = await YraceSeedMaster.new(this.YraceToken.address, 100, 5,505,10000, feeAddress, { from: alice })
+        this.master = await YraceSeedMaster.new(this.YraceToken.address, 100, 5,505, feeAddress, { from: alice })
         await this.YraceToken.setMaster(this.master.address, { from: alice })
         
         const yRace = await this.master.yRace()
@@ -19,12 +19,12 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
         assert.equal((await this.master.REWARD_PER_BLOCK()).valueOf(), 100)
         assert.equal((await this.master.START_BLOCK()).valueOf(), 5)
         assert.equal((await this.master.END_BLOCK()).valueOf(), 505)
-        assert.equal((await this.master.seedPoolAmount()).valueOf(), 10000)
+        assert.equal((await this.master.seedPoolAmount()).valueOf(), 50000)
         assert.equal((await this.master.feeAddress()).valueOf(), feeAddress)
     })
 
     it('should allow only master farmer can mint', async () => {
-        this.master = await YraceSeedMaster.new(this.YraceToken.address, 1234, 100,500,10000, feeAddress, { from: alice })
+        this.master = await YraceSeedMaster.new(this.YraceToken.address, 1234, 100,500, feeAddress, { from: alice })
         await this.YraceToken.setMaster(minter, { from: alice })
 
         assert.equal((await this.YraceToken.yRaceMaster()).valueOf(), minter)
@@ -55,7 +55,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
 
         it('should correct add new pool and set pool', async () => {
             // 100 per block, start at block 100
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 100, 100,500,10000, feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 100, 100,500, feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true, { from: alice})
@@ -91,7 +91,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
         })
 
         it('should correct deposit', async () => {
-           this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200,1000,feeAddress, { from: alice })
+           this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200,feeAddress, { from: alice })
            await this.YraceToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true)
@@ -123,7 +123,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
 
         it('should give out YraceToken only after end of staking period', async () => {
             // 10 per block farming rate starting at block 200 
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 200,300,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 200,300,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
 
             // await time.advanceBlockTo('190')
@@ -172,7 +172,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
 
         it('should not distribute YraceToken if no one deposit', async () => {
             // 10 per block farming rate starting at block 400 
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 400,500,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 400,500,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
 
             await this.YraceToken.transferOwnership(this.master.address, { from: alice })
@@ -205,7 +205,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
         })
 
         it('should equally distribute', async () => {
-           this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 600,700,1000,feeAddress, { from: alice })
+           this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 600,700,feeAddress, { from: alice })
            await this.YraceToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,500, true)
@@ -259,7 +259,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
         })
 
         it('should properly distribute at different deposit amounts', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 800,900,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 800,900,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,1000, true)
@@ -305,7 +305,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
          })
 
         it('should distribute properly when multiple deposit', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1000,1100,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1000,1100,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,1000, true)
@@ -336,7 +336,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
         })
 
         it('should allow partial withdraw but not give Yrace token', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1200,1300,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1200,1300,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,1000, true)
@@ -385,7 +385,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
         })
 
         it('should pay to referrer address if a user is referred by it', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1400,1500,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1400,1500,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,500, true)
@@ -412,7 +412,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
 
         
         it('should not be referred by multiple referrers', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1600,1700,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1600,1700,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
  
             await this.master.add('100', this.lp.address,400, true)
@@ -441,7 +441,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
         }) 
 
         it('should allow withdraw after change of master address in token contract', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1800,1900,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1800,1900,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,600, true)
@@ -498,7 +498,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
          })
 
          it('should allow change of deposit fee', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 2000,2100,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 2000,2100,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,0, true)
@@ -542,7 +542,7 @@ contract('YraceSeedMaster', ([alice, bob, carol, dev, eliah, minter, feeAddress]
         })
 
         it('should allow original fee address to change feeAddress', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 2200,2300,10000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 2200,2300,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
             await expectRevert(
                 this.master.setFeeAddress(dev, { from: alice }),

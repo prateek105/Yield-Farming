@@ -312,7 +312,7 @@ contract('EraceMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) => 
             await this.lp2.transfer(dev, '1000', { from: minter })
             await this.lp2.transfer(eliah, '1000', { from: minter })
 
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1400,1500,1000,feeAddress, { from: alice })
+            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1400,1500,feeAddress, { from: alice })
             await this.YraceToken.setMaster(this.master.address, { from: alice })
  
             await this.master.add('100', this.lp.address,1000, true)
