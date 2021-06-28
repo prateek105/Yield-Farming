@@ -36,7 +36,7 @@ contract Timelock {
 
     modifier onlyAdmin() {
         require(msg.sender == admin, 
-        "Timelock::queueTransaction: Call must come from admin.");
+        "Timelock: Call must come from admin.");
         _;
     }
 
