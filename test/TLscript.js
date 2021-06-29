@@ -14,7 +14,7 @@ class Setup {
     MultiSig = new web3.eth.Contract(SigABI.abi)
 	}
 
-    callDataForModify(operType,target,funcName, params,eta) {
+  callDataForModifyingContract(operType,target,funcName, params,eta) {
       let signature;
       let data;
       let callData;
@@ -62,5 +62,5 @@ class Setup {
 }
 
 const obj = new Setup();
-// obj.callDataForModify("","","",[],"");
+// obj.callDataForModifyingContract("","","",[],"");
 // obj.callDataForWithdraw("","","","");
