@@ -59,8 +59,29 @@ class Setup {
       }
       console.log(callData)
     }
+
+    callDataForAddOwner(newOwner) {
+      let callData;
+      callData = MultiSig.methods.addOwner(newOwner).encodeABI()
+      console.log(callData)
+    }
+
+    callDataForRemoveOwner(owner) {
+      let callData;
+      callData = MultiSig.methods.removeOwner(owner).encodeABI()
+      console.log(callData)
+    }
+
+    callDataForReplaceOwner(oldOwner,newOwner) {
+      let callData;
+      callData = MultiSig.methods.replaceOwner(oldOwner,newOwner).encodeABI()
+      console.log(callData)
+    }
 }
 
 const obj = new Setup();
 // obj.callDataForModifyingContract("","","",[],"");
 // obj.callDataForWithdraw("","","","");
+// obj.callDataForAddOwner("")
+// obj.callDataForRemoveOwner("")
+// obj.callDataForReplaceOwner("","")
