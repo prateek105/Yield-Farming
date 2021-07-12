@@ -395,6 +395,36 @@ contract YraceLPMaster is Ownable {
     }
 
     /**
+     *@notice Returns reward per block in current stage
+     *@return rewardPerBlock reward per block of current stage
+     */
+    function getRewardPerBlock()
+        public
+        view
+        returns (uint256 rewardPerBlock)
+    {
+        if(block.number>=START_BLOCK && block.number<STAGE2)
+        {
+            return REWARD_PER_BLOCK.mul(10);
+        }
+
+        if(block.number>=STAGE2 && block.number<STAGE3)
+        {
+            return REWARD_PER_BLOCK.mul(5);
+        }
+
+        if(block.number>=STAGE3 && block.number<STAGE4)
+        {
+            return REWARD_PER_BLOCK.mul(3);
+        }
+
+        if(block.number>=STAGE4)
+        {
+            return REWARD_PER_BLOCK;
+        }
+    }
+
+    /**
      *@notice Returns pending rewards to be claimed for the user `_user` in pool `_pid`
      *@param _pid Pool ID
      *@param _user User address

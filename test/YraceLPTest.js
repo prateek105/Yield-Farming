@@ -572,5 +572,18 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
             assert.equal(await this.YraceToken.balanceOf(eliah),'2250');
  
          })
+
+         it('should return reward per block for the stage', async () => {
+            this.master = await YraceLPMaster.new(this.YraceToken.address, 1, 2100,10,feeAddress, { from: alice })
+            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            await time.advanceBlockTo('2105')
+            assert.equal(await this.master.getRewardPerBlock(),10)
+            await time.advanceBlockTo('2115')
+            assert.equal(await this.master.getRewardPerBlock(),5)
+            await time.advanceBlockTo('2125')
+            assert.equal(await this.master.getRewardPerBlock(),3)
+            await time.advanceBlockTo('2135')
+            assert.equal(await this.master.getRewardPerBlock(),1)
+        })
     })
 })
