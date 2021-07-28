@@ -5,12 +5,12 @@ import "./mocks/Ownable.sol";
 import "./mocks/BEP20.sol";
 import "./libs/SafeMath.sol";
 
-contract EraceToken is BEP20("ERace", "eRace"), Ownable {
+contract EnoteToken is BEP20("ERace", "eNote"), Ownable {
     using SafeMath for uint256;
 
-    uint256 public cap;           //max cap for eRace (10000e18)
+    uint256 public cap;           //max cap for eNote (10000e18)
     uint256 public remPoolAmount; // remaining pool amount that can be minted
-    address public eRaceMaster;
+    address public eNoteMaster;
 
     constructor(
         uint256 _cap
@@ -20,15 +20,15 @@ contract EraceToken is BEP20("ERace", "eRace"), Ownable {
     }
 
     /**
-     *@notice Sets eRaceMaster to `_eRaceMaster`. Must only be called by the owner.
-     *@param _eRaceMaster Address of master contract to be set
+     *@notice Sets eNoteMaster to `_eNoteMaster`. Must only be called by the owner.
+     *@param _eNoteMaster Address of master contract to be set
      */
-    function setMaster(address _eRaceMaster) public onlyOwner {
+    function setMaster(address _eNoteMaster) public onlyOwner {
         require(
-            _eRaceMaster != address(0x0),
-            "EraceToken: Master cannot be zero address"
+            _eNoteMaster != address(0x0),
+            "EnoteToken: Master cannot be zero address"
         );
-        eRaceMaster = _eRaceMaster;
+        eNoteMaster = _eNoteMaster;
     }
 
     /**
@@ -38,10 +38,10 @@ contract EraceToken is BEP20("ERace", "eRace"), Ownable {
      */
     function mint(address _to, uint256 _amount) public {
         require(
-            msg.sender == eRaceMaster,
-            "EraceToken: only master farmer can mint"
+            msg.sender == eNoteMaster,
+            "EnoteToken: only master farmer can mint"
         );
-        require(remPoolAmount >= _amount, "EraceToken: mint amount exceeds cap");
+        require(remPoolAmount >= _amount, "EnoteToken: mint amount exceeds cap");
         remPoolAmount = remPoolAmount.sub(_amount);
         _mint(_to, _amount);
     }

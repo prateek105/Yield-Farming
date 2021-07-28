@@ -1,56 +1,59 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.3;
 
 import "./mocks/Ownable.sol";
 import "./libs/SafeBEP20.sol";
 import "./libs/SafeMath.sol";
-import "./YraceToken.sol";
+import "./YnoteToken.sol";
 
-contract YraceSeedMaster is Ownable {
+contract YnoteLPMaster is Ownable {
     using SafeMath for uint256;
     using SafeBEP20 for IBEP20;
 
+    // Info of each user.
     struct UserInfo {
         uint256 amount; // How many LP tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
-        uint256 rewardToClaim; //Total reward to be claimed
         //
-        // We do some fancy math here. Basically, any point in time, the amount of yRaces
+        // We do some fancy math here. Basically, any point in time, the amount of yNotes
         // entitled to a user but is pending to be distributed is:
         //
         //   pending reward = (user.amount * pool.rewardPerShare) - user.rewardDebt
-
-        // Whenever a user deposits tokens to a seed pool. Here's what happens:
+        //
+        // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
         //   1. The pool's `rewardPerShare` (and `lastRewardBlock`) gets updated.
-        //   2. User.s pending rewards is added to user's 'rewardToClaim'
+        //   2. User receives the pending reward sent to his/her address.
         //   3. User's `amount` gets updated.
         //   4. User's `rewardDebt` gets updated.
     }
 
     // Info of each pool.
     struct PoolInfo {
-        IBEP20 lpToken; // seed pool contract address
-        uint256 allocPoint;
+        IBEP20 lpToken; // Address of LP token contract.
+        uint256 allocPoint; // How many allocation points assigned to this pool.
         uint256 lastRewardBlock;
-        uint256 rewardPerShare; //amount of yRace per pool token
+        uint256 rewardPerShare; //amount of yNote per pool token
         uint16 depositFeeBP; // Deposit fee in basis points
     }
 
-    // The yRace TOKEN!
-    YraceToken public yRace;
-    // yRace tokens created per block.
+    // The yNote TOKEN!
+    YnoteToken public yNote;
+    // yNote tokens created per block.
     uint256 public REWARD_PER_BLOCK;
-    //start of staking period
+    // Number of blocks in each stage before stage 4 (will be 200,000)
+    uint256 public BLOCKS_PER_STAGE;
+    // The block number when yNote mining starts.
     uint256 public START_BLOCK;
-    // start of claiming period
-    uint256 public END_BLOCK;
-    // Total allocation poitns. Must be the sum of all allocation points in all pools.
+    // Stages start block number
+    uint256 private STAGE2;
+    uint256 private STAGE3;
+    uint256 private STAGE4;
+    // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
-    //Total maximum rewards from seed pool
-    uint256 public seedPoolAmount;
-    // Referral Bonus in basis points. Initially set to 2% (1% = 100 BP)
+    // Referral Bonus in basis points. Initially set to 2%
     uint256 public refBonusBP = 200;
+    // Max referral commission rate: 20%.
+    uint16 public constant MAXIMUM_REFERRAL_BP = 2000;
     // Deposit Fee address
     address public feeAddress;
 
@@ -58,7 +61,7 @@ contract YraceSeedMaster is Ownable {
     PoolInfo[] public poolInfo;
     // poolId1 count from 1, subtraction 1 before using with poolInfo
     mapping(address => uint256) public poolId1;
-    // Info of each user that stakes LP tokens. pid => user address => info
+    // Info of each user that stakes LP tokens.
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     // Referral Mapping
     mapping(address => address) public referrers; // account_address -> referrer_address
@@ -66,25 +69,33 @@ contract YraceSeedMaster is Ownable {
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event EmergencyWithdraw(
+        address indexed user,
+        uint256 indexed pid,
+        uint256 amount
+    );
     event Referral(address indexed _referrer, address indexed _user);
     event ReferralPaid(
         address indexed _user,
         address indexed _userTo,
         uint256 _reward
     );
+    event ReferralBonusChanged(uint256 _old, uint256 _new);
 
     constructor(
-        YraceToken _yRace,
+        YnoteToken _yNote,
         uint256 _rewardPerBlock,
         uint256 _START_BLOCK,
-        uint256 _END_BLOCK,
+        uint256 _BLOCKS_PER_STAGE,
         address _feeAddress
     ) {
-        yRace = _yRace;
+        yNote = _yNote;
         REWARD_PER_BLOCK = _rewardPerBlock;
         START_BLOCK = _START_BLOCK;
-        END_BLOCK = _END_BLOCK;
-        seedPoolAmount = (END_BLOCK-START_BLOCK)*REWARD_PER_BLOCK;
+        BLOCKS_PER_STAGE = _BLOCKS_PER_STAGE;
+        STAGE2 = START_BLOCK.add(BLOCKS_PER_STAGE);
+        STAGE3 = STAGE2.add(BLOCKS_PER_STAGE);
+        STAGE4 = STAGE3.add(BLOCKS_PER_STAGE);
         feeAddress = _feeAddress;
     }
 
@@ -112,7 +123,7 @@ contract YraceSeedMaster is Ownable {
     ) public onlyOwner validDepositFeeBP(_depositFeeBP) {
         require(
             poolId1[address(_lpToken)] == 0,
-            "YraceSeedMaster::add: seed pool is already in pool"
+            "YnoteLPMaster::add: lp pool is already in pool"
         );
         if (_withUpdate) {
             massUpdatePools();
@@ -156,6 +167,13 @@ contract YraceSeedMaster is Ownable {
     }
 
     /**
+     *@notice Returns number of seed pools
+     */
+    function poolLength() external view returns (uint256) {
+        return poolInfo.length;
+    }
+
+    /**
      *@notice runs updatePool() for all pools
      */
     function massUpdatePools() public {
@@ -171,22 +189,20 @@ contract YraceSeedMaster is Ownable {
      */
     function updatePool(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
-        //won't mine until sale starts after start block
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        //total staked in pool
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
         }
+        uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 reward =
-            getPoolReward(pool.lastRewardBlock, block.number, pool.allocPoint);
-        if (yRace.yRaceMaster() == address(this))
-            yRace.mint(address(this), reward);
-        seedPoolAmount = seedPoolAmount.sub(reward);
-        //amount of yRace per token
+            multiplier.mul(REWARD_PER_BLOCK).mul(pool.allocPoint).div(
+                totalAllocPoint
+            );
+        yNote.mint(address(this), reward);
         pool.rewardPerShare = pool.rewardPerShare.add(
             reward.mul(1e12).div(lpSupply)
         );
@@ -206,11 +222,7 @@ contract YraceSeedMaster is Ownable {
     ) public {
         require(
             block.number >= START_BLOCK,
-            "YraceSeedMaster: Staking period has not started"
-        );
-        require(
-            block.number < END_BLOCK,
-            "YraceSeedMaster: Staking period has ended"
+            "YnoteLPMaster: Staking period has not started"
         );
 
         PoolInfo storage pool = poolInfo[_pid];
@@ -221,7 +233,10 @@ contract YraceSeedMaster is Ownable {
                 user.amount.mul(pool.rewardPerShare).div(1e12).sub(
                     user.rewardDebt
                 );
-            user.rewardToClaim += pending;
+            if (pending > 0) {
+                safeTransferReward(msg.sender, pending);
+                payReferralCommission(msg.sender, pending);
+            }
         }
         if (_amount > 0) {
             setReferral(msg.sender, _referrer);
@@ -238,131 +253,61 @@ contract YraceSeedMaster is Ownable {
                 user.amount = user.amount.add(_amount);
             }
         }
-
         user.rewardDebt = user.amount.mul(pool.rewardPerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
     }
 
     /**
-     *@notice Withdraws `_amount` nu. of tokens from pool `_pid`
+     *@notice Withdraws `_amount` tokens from pool `_pid`
      *@param _pid Pool ID of pool from which amount will be withdrawn
      *@param _amount Amount to be withdrawn
      */
-    function withdraw(uint256 _pid,uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-        require(user.amount != 0, "YraceSeedMaster: No tokens staked");
-        require(user.amount >= _amount, "YraceSeedMaster : Withdraw not good");
+        require(user.amount != 0, "YnoteLPMaster: No tokens staked");
+        require(user.amount >= _amount, "YnoteLPMaster : Withdraw not good");
         updatePool(_pid);
         uint256 pending =
             user.amount.mul(pool.rewardPerShare).div(1e12).sub(user.rewardDebt);
-        user.rewardToClaim += pending;
-
+        if (pending > 0) {
+            safeTransferReward(msg.sender, pending);
+            payReferralCommission(msg.sender, pending);
+        }
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.lpToken.safeTransfer(address(msg.sender), _amount);
         }
         user.rewardDebt = user.amount.mul(pool.rewardPerShare).div(1e12);
-        emit Withdraw(msg.sender, _pid, user.amount);
+        emit Withdraw(msg.sender, _pid, _amount);
     }
 
     /**
-     *@notice Withdraws all tokens from pool `_pid` and sends yRace reward tokens and staked tokens to user
-     *@param _pid Pool ID of pool from which tokens will be withdrawn
+     *@notice Withdraw without caring about rewards. EMERGENCY ONLY.
+     *@param _pid Pool
      */
-    function harvest(uint256 _pid) public {
-        require(
-            block.number >= END_BLOCK,
-            "YraceSeedMaster: Staking period is in progress"
-        );
 
+    function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-    
-        updatePool(_pid);
-        uint256 pending =
-            user.amount.mul(pool.rewardPerShare).div(1e12).sub(user.rewardDebt);
-        user.rewardToClaim += pending;  
-
-        require(user.rewardToClaim != 0, "YraceSeedMaster: No rewards to claim");
-
-        if (user.rewardToClaim > 0) {
-            safeTransferReward(msg.sender, user.rewardToClaim);
-            payReferralCommission(msg.sender, user.rewardToClaim);
-        }
-        
         pool.lpToken.safeTransfer(address(msg.sender), user.amount);
+        emit EmergencyWithdraw(msg.sender, _pid, user.amount);
         user.amount = 0;
-        user.rewardToClaim = 0;
         user.rewardDebt = 0;
     }
 
-
     /**
-     *@notice To avoid rounding error causing pool to not have enough yRaces.
+     *@notice To avoid rounding error causing pool to not have enough yNotes.
      *@param _to Address to which amount is transferred
      *@param _amount Amount to be transferred
      */
     function safeTransferReward(address _to, uint256 _amount) internal {
-        uint256 bal = yRace.balanceOf(address(this));
-        if (_amount > bal) {
-            yRace.transfer(_to, bal);
+        uint256 yNoteBal = yNote.balanceOf(address(this));
+        if (_amount > yNoteBal) {
+            yNote.transfer(_to, yNoteBal);
         } else {
-            yRace.transfer(_to, _amount);
+            yNote.transfer(_to, _amount);
         }
-    }
-
-    /**
-     *@notice Returns reward multiplier over the given `_from` to `_to` block.
-     *@param _from Block number from which multiplier is to calculated
-     *@param _to Block number till which multiplier is to calculated
-     */
-    function getMultiplier(uint256 _from, uint256 _to)
-        public
-        view
-        returns (uint256)
-    {
-        if (_to <= START_BLOCK || _from >= _to) {
-            return 0;
-        } else if (_to > START_BLOCK && _to <= END_BLOCK) {
-            if (_from <= START_BLOCK) {
-                return _to.sub(START_BLOCK);
-            } else {
-                return _to.sub(_from);
-            }
-        } else {
-            if (_from <= END_BLOCK) {
-                return END_BLOCK.sub(_from);
-            } else {
-                return 0;
-            }
-        }
-    }
-
-    /**
-     *@notice Returns amount of yRace to be minted for pool for duration of `_from` to `_to` block
-     *@param _from Block number from which multiplier is to calculated
-     *@param _to Block number till which multiplier is to calculated
-     *@param _allocPoint Allocation points for the pool
-     */
-    function getPoolReward(
-        uint256 _from,
-        uint256 _to,
-        uint256 _allocPoint
-    ) public view returns (uint256) {
-        uint256 multiplier = getMultiplier(_from, _to);
-        uint256 amount =
-            multiplier.mul(REWARD_PER_BLOCK).mul(_allocPoint).div(
-                totalAllocPoint
-            );
-        return seedPoolAmount < amount ? seedPoolAmount : amount;
-    }
-
-    /**
-     *@notice Returns number of seed pools
-     */
-    function poolLength() external view returns (uint256) {
-        return poolInfo.length;
     }
 
     /**
@@ -380,7 +325,107 @@ contract YraceSeedMaster is Ownable {
     }
 
     /**
-     *@notice Returns total reward generated for the user `_user` in pool `_pid`
+     *@notice Returns reward multiplier over the given `_from` to `_to` block.
+     *@param _from Block number from which multiplier is to calculated
+     *@param _to Block number till which multiplier is to calculated
+     */
+    function getMultiplier(uint256 _from, uint256 _to)
+        public
+        view
+        returns (uint256)
+    {
+        // Temporary variable for calculating rewards
+        uint256 bonus = 0;
+        if (_to <= START_BLOCK || _from >= _to) {
+            return 0;
+        } else if (_to > START_BLOCK && _to <= STAGE2) {
+            if (_from <= START_BLOCK) {
+                return _to.sub(START_BLOCK).mul(10);
+            } else {
+                return _to.sub(_from).mul(10);
+            }
+        } else if (_to > STAGE2 && _to <= STAGE3) {
+            if (_from <= START_BLOCK) {
+                bonus = BLOCKS_PER_STAGE.mul(10);
+                return bonus.add(_to.sub(STAGE2).mul(5));
+            } else if (_from > START_BLOCK && _from <= STAGE2) {
+                bonus = STAGE2.sub(_from).mul(10);
+                return bonus.add(_to.sub(STAGE2).mul(5));
+            } else {
+                return _to.sub(_from).mul(5);
+            }
+        } else if (_to > STAGE3 && _to <= STAGE4) {
+            if (_from <= START_BLOCK) {
+                bonus = BLOCKS_PER_STAGE.mul(10);
+                bonus = bonus.add(BLOCKS_PER_STAGE.mul(5));
+                return bonus.add(_to.sub(STAGE3).mul(3));
+            } else if (_from > START_BLOCK && _from <= STAGE2) {
+                bonus = STAGE2.sub(_from).mul(10);
+                bonus = bonus.add(BLOCKS_PER_STAGE.mul(5));
+                return bonus.add(_to.sub(STAGE3).mul(3));
+            } else if (_from > STAGE2 && _from <= STAGE3) {
+                bonus = STAGE3.sub(_from).mul(5);
+                return bonus.add(_to.sub(STAGE3).mul(3));
+            } else {
+                return _to.sub(_from).mul(3);
+            }
+        } else if (_to > STAGE4) {
+            if (_from <= START_BLOCK) {
+                bonus = BLOCKS_PER_STAGE.mul(10);
+                bonus = bonus.add(BLOCKS_PER_STAGE.mul(5));
+                bonus = bonus.add(BLOCKS_PER_STAGE.mul(3));
+                return bonus.add(_to.sub(STAGE4));
+            } else if (_from > START_BLOCK && _from <= STAGE2) {
+                bonus = STAGE2.sub(_from).mul(10);
+                bonus = bonus.add(BLOCKS_PER_STAGE.mul(5));
+                bonus = bonus.add(BLOCKS_PER_STAGE.mul(3));
+                return bonus.add(_to.sub(STAGE4));
+            } else if (_from > STAGE2 && _from <= STAGE3) {
+                bonus = STAGE3.sub(_from).mul(5);
+                bonus = bonus.add(BLOCKS_PER_STAGE.mul(3));
+                return bonus.add(_to.sub(STAGE4));
+            } else if (_from > STAGE3 && _from <= STAGE4) {
+                bonus = STAGE4.sub(_from).mul(3);
+                return bonus.add(_to.sub(STAGE4));
+            } else {
+                return bonus.add(_to.sub(_from));
+            }
+        }
+        return 0;
+    }
+
+    /**
+     *@notice Returns reward per block in current stage
+     *@return rewardPerBlock reward per block of current stage
+     */
+    function getRewardPerBlock()
+        public
+        view
+        returns (uint256 rewardPerBlock)
+    {
+        if(block.number>=START_BLOCK && block.number<STAGE2)
+        {
+            return REWARD_PER_BLOCK.mul(10);
+        }
+
+        if(block.number>=STAGE2 && block.number<STAGE3)
+        {
+            return REWARD_PER_BLOCK.mul(5);
+        }
+
+        if(block.number>=STAGE3 && block.number<STAGE4)
+        {
+            return REWARD_PER_BLOCK.mul(3);
+        }
+
+        if(block.number>=STAGE4)
+        {
+            return REWARD_PER_BLOCK;
+        }
+    }
+
+    /**
+     *@notice Returns pending rewards to be claimed for the user `_user` in pool `_pid`
      *@param _pid Pool ID
      *@param _user User address
      */
@@ -393,18 +438,16 @@ contract YraceSeedMaster is Ownable {
         UserInfo storage user = userInfo[_pid][_user];
         uint256 rewardPerShare = pool.rewardPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
-        if (block.number > pool.lastRewardBlock && lpSupply > 0) {
+        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
+            uint256 multiplier =
+                getMultiplier(pool.lastRewardBlock, block.number);
             uint256 reward =
-                getPoolReward(
-                    pool.lastRewardBlock,
-                    block.number,
-                    pool.allocPoint
+                multiplier.mul(REWARD_PER_BLOCK).mul(pool.allocPoint).div(
+                    totalAllocPoint
                 );
             rewardPerShare = rewardPerShare.add(reward.mul(1e12).div(lpSupply));
         }
-        return
-            user.rewardToClaim +
-            user.amount.mul(rewardPerShare).div(1e12).sub(user.rewardDebt);
+        return user.amount.mul(rewardPerShare).div(1e12).sub(user.rewardDebt);
     }
 
     /**
@@ -442,9 +485,27 @@ contract YraceSeedMaster is Ownable {
         address referrer = getReferral(_user);
         if (referrer != address(0) && referrer != _user && refBonusBP > 0) {
             uint256 refBonusEarned = _pending.mul(refBonusBP).div(10000);
-            yRace.mint(referrer, refBonusEarned);
+            yNote.mint(referrer, refBonusEarned);
             emit ReferralPaid(_user, referrer, refBonusEarned);
         }
+    }
+
+    /**
+     *@notice Update referral bonus percentage. Can only be called by owner
+     *@param _newRefBonus New referral bonus in basis points
+     */
+    function updateReferralBonusBp(uint256 _newRefBonus) public onlyOwner {
+        require(
+            _newRefBonus <= MAXIMUM_REFERRAL_BP,
+            "YnoteLPMaster : invalid referral bonus basis points"
+        );
+        require(
+            _newRefBonus != refBonusBP,
+            "YnoteLPMaster  : same bonus bp set"
+        );
+        uint256 previousRefBonus = refBonusBP;
+        refBonusBP = _newRefBonus;
+        emit ReferralBonusChanged(previousRefBonus, _newRefBonus);
     }
 
     /**
@@ -454,11 +515,11 @@ contract YraceSeedMaster is Ownable {
     function setFeeAddress(address _feeAddress) public {
         require(
             msg.sender == feeAddress,
-            "YraceSeedMaster: forbidden from change"
+            "YnoteLPMaster: forbidden from change"
         );
         require(
             _feeAddress != address(0),
-            "YraceSeedMaster: fee address cant be zero address"
+            "YnoteLPMaster: fee address cant be zero address"
         );
         feeAddress = _feeAddress;
     }

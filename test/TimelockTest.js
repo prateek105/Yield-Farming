@@ -1,18 +1,18 @@
 const { expectRevert, time, constants,BN } = require('@openzeppelin/test-helpers')
 const { assertion } = require('@openzeppelin/test-helpers/src/expectRevert')
 const { web3 } = require('@openzeppelin/test-helpers/src/setup')
-const YraceToken = artifacts.require('YraceToken')
-const YraceSeedMaster = artifacts.require('YraceSeedMaster')
+const YnoteToken = artifacts.require('YnoteToken')
+const YnoteSeedMaster = artifacts.require('YnoteSeedMaster')
 const MockBEP20 = artifacts.require('MockBEP20')
 const Timelock = artifacts.require('Timelock')
-const SeedABI = require('../build/contracts/YraceSeedMaster.json')
+const SeedABI = require('../build/contracts/YnoteSeedMaster.json')
 const TimeABI = require('../build/contracts/Timelock.json')
 
 
 contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin]) => {
     beforeEach(async () => {
         this.timelock = await Timelock.new(admin, 21600,{ from: alice })
-        this.YraceToken = await YraceToken.new({from : alice})
+        this.YnoteToken = await YnoteToken.new({from : alice})
     })
 
     it('should have correct settings', async ()=>{
@@ -80,8 +80,8 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
         })
 
         it('should allow to queue and execute txns', async ()=>{
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200, feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteSeedMaster.new(this.YnoteToken.address, 10, 100,200, feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true, { from: alice})
 
@@ -156,8 +156,8 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
         }) 
 
         it('should allow cancel txns', async ()=>{
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 150,250, feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteSeedMaster.new(this.YnoteToken.address, 10, 150,250, feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true, { from: alice})
             await this.master.add('100', this.lp2.address,1000, true, { from: alice})
@@ -199,8 +199,8 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
         }) 
 
         it('should allow setup of farming', async ()=>{
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 200,300, feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteSeedMaster.new(this.YnoteToken.address, 10, 200,300, feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true, { from: alice})
             await this.master.add('100', this.lp2.address,1000, true, { from: alice})
@@ -233,13 +233,13 @@ contract('Timelock', ([alice, bob, carol, dev, eliah, minter, feeAddress,admin])
             await this.timelock.executeTransaction(
                 this.master.address, 0,signature,data,eta, {from : admin})
 
-            await this.YraceToken.setMaster(minter, { from: alice })
+            await this.YnoteToken.setMaster(minter, { from: alice })
     
             await this.master.harvest(0, { from: bob })
             await this.master.harvest(1, { from: carol })
 
-            assert.equal(await this.YraceToken.balanceOf(bob),'249');
-            assert.equal(await this.YraceToken.balanceOf(carol),'244');           
+            assert.equal(await this.YnoteToken.balanceOf(bob),'249');
+            assert.equal(await this.YnoteToken.balanceOf(carol),'244');           
 
 
         }) 

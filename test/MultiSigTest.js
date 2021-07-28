@@ -1,11 +1,11 @@
 const { expectRevert, time } = require('@openzeppelin/test-helpers')
 const { assertion } = require('@openzeppelin/test-helpers/src/expectRevert')
 const { web3 } = require('@openzeppelin/test-helpers/src/setup')
-const YraceSeedMaster = artifacts.require('YraceSeedMaster')
-const YraceToken = artifacts.require('YraceToken')
+const YnoteSeedMaster = artifacts.require('YnoteSeedMaster')
+const YnoteToken = artifacts.require('YnoteToken')
 const Timelock = artifacts.require('Timelock')
 const MultiSigWallet = artifacts.require('MultiSigWallet')
-const SeedABI = require('../build/contracts/YraceSeedMaster.json')
+const SeedABI = require('../build/contracts/YnoteSeedMaster.json')
 const TimeABI = require('../build/contracts/Timelock.json')
 const SigABI = require('../build/contracts/MultiSigWallet.json')
 
@@ -14,7 +14,7 @@ const SigABI = require('../build/contracts/MultiSigWallet.json')
 contract('MultiSigWallet', ([tokenOwner, signer1, signer2, signer3, signer4, alice,bob,carol]) => {
     beforeEach(async () => {     
         this.MultiSigWallet = await MultiSigWallet.new([signer1,signer2,signer3,signer4], 3,{ from: tokenOwner })
-        this.YraceToken = await YraceToken.new({from : alice})
+        this.YnoteToken = await YnoteToken.new({from : alice})
     })
 
     function getAbiFunction(contract, functionName) {
@@ -139,7 +139,7 @@ contract('MultiSigWallet', ([tokenOwner, signer1, signer2, signer3, signer4, ali
         })
 
         it('should allow to add/modify pools using timelock', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200, tokenOwner, { from: tokenOwner })
+            this.master = await YnoteSeedMaster.new(this.YnoteToken.address, 10, 100,200, tokenOwner, { from: tokenOwner })
             this.timelock = await Timelock.new(this.MultiSigWallet.address, 21600,{ from: tokenOwner })
             await this.master.transferOwnership(this.timelock.address,{from: tokenOwner})
 
@@ -227,7 +227,7 @@ contract('MultiSigWallet', ([tokenOwner, signer1, signer2, signer3, signer4, ali
         })
 
         it('should give proper confirmations list', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 100,200, tokenOwner, { from: tokenOwner })
+            this.master = await YnoteSeedMaster.new(this.YnoteToken.address, 10, 100,200, tokenOwner, { from: tokenOwner })
             this.timelock = await Timelock.new(this.MultiSigWallet.address, 21600,{ from: tokenOwner })
             await this.master.transferOwnership(this.timelock.address,{from: tokenOwner})
 
@@ -302,8 +302,8 @@ contract('MultiSigWallet', ([tokenOwner, signer1, signer2, signer3, signer4, ali
 
         it('should allow deposit and withdraw of tokens / native coin', async () => {
 
-            await this.YraceToken.setMaster(alice, {from : alice})
-            await this.YraceToken.mint(this.MultiSigWallet.address,"10000", {from : alice})
+            await this.YnoteToken.setMaster(alice, {from : alice})
+            await this.YnoteToken.mint(this.MultiSigWallet.address,"10000", {from : alice})
             await web3.eth.sendTransaction({to: this.MultiSigWallet.address, from : signer1, value : web3.utils.toWei("1", "ether")});
 
             //withdraw native coins
@@ -339,25 +339,25 @@ contract('MultiSigWallet', ([tokenOwner, signer1, signer2, signer3, signer4, ali
             assert.equal(await web3.eth.getBalance(this.MultiSigWallet.address),0)
 
             //withdraw BEP20 token by owner
-            callData = await contract.methods.withdrawToken(this.YraceToken.address,signer1,1000).encodeABI();
+            callData = await contract.methods.withdrawToken(this.YnoteToken.address,signer1,1000).encodeABI();
             tx = await this.MultiSigWallet.submitTransaction(this.MultiSigWallet.address, 0,callData, {from: signer1});
             transactionId = tx.receipt.logs[0].args["0"];
 
             await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer2});
             await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer3});
 
-            assert.equal(await this.YraceToken.balanceOf(this.MultiSigWallet.address),9000)
-            assert.equal(await this.YraceToken.balanceOf(signer1),1000)
+            assert.equal(await this.YnoteToken.balanceOf(this.MultiSigWallet.address),9000)
+            assert.equal(await this.YnoteToken.balanceOf(signer1),1000)
 
-            callData = await contract.methods.withdrawToken(this.YraceToken.address,signer3,5000).encodeABI();
+            callData = await contract.methods.withdrawToken(this.YnoteToken.address,signer3,5000).encodeABI();
             tx = await this.MultiSigWallet.submitTransaction(this.MultiSigWallet.address, 0,callData, {from: signer3});
             transactionId = tx.receipt.logs[0].args["0"];
 
             await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer2});
             await this.MultiSigWallet.confirmTransaction(transactionId, {from: signer1});
 
-            assert.equal(await this.YraceToken.balanceOf(this.MultiSigWallet.address),4000)
-            assert.equal(await this.YraceToken.balanceOf(signer3),5000)
+            assert.equal(await this.YnoteToken.balanceOf(this.MultiSigWallet.address),4000)
+            assert.equal(await this.YnoteToken.balanceOf(signer3),5000)
 
             
         })

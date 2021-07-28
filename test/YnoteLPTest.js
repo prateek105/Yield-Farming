@@ -1,19 +1,19 @@
 const { expectRevert, time, constants } = require('@openzeppelin/test-helpers')
-const YraceToken = artifacts.require('YraceToken')
-const YraceLPMaster = artifacts.require('YraceLPMaster')
-const YraceSeedMaster = artifacts.require('YraceSeedMaster')
+const YnoteToken = artifacts.require('YnoteToken')
+const YnoteLPMaster = artifacts.require('YnoteLPMaster')
+const YnoteSeedMaster = artifacts.require('YnoteSeedMaster')
 const MockBEP20 = artifacts.require('MockBEP20')
 
-contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) => {
+contract('YnoteLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) => {
     beforeEach(async () => {
-        this.YraceToken = await YraceToken.new({ from: alice })
+        this.YnoteToken = await YnoteToken.new({ from: alice })
     })
 
     it('should set correct state variables', async () => {
-        this.master = await YraceLPMaster.new(this.YraceToken.address, 10,100,500,feeAddress, { from: alice })
-        await this.YraceToken.setMaster(this.master.address, { from: alice })
+        this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10,100,500,feeAddress, { from: alice })
+        await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
-        assert.equal(await this.master.yRace().valueOf(), this.YraceToken.address)
+        assert.equal(await this.master.yNote().valueOf(), this.YnoteToken.address)
         assert.equal((await this.master.REWARD_PER_BLOCK()).valueOf(), 10)
         assert.equal((await this.master.START_BLOCK()).valueOf(), 100)
         assert.equal((await this.master.BLOCKS_PER_STAGE()).valueOf(), 500)
@@ -22,16 +22,16 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
     })
 
     it('should allow only master farmer can mint', async () => {
-        this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 100,500,feeAddress, { from: alice })
-        await this.YraceToken.setMaster(minter, { from: alice })
+        this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 100,500,feeAddress, { from: alice })
+        await this.YnoteToken.setMaster(minter, { from: alice })
 
-        assert.equal((await this.YraceToken.yRaceMaster()).valueOf(), minter)
+        assert.equal((await this.YnoteToken.yNoteMaster()).valueOf(), minter)
         await expectRevert(
-            (this.YraceToken.mint(alice, '10000000000', { from: alice })),
-            "YraceToken: only master farmer can mint")
+            (this.YnoteToken.mint(alice, '10000000000', { from: alice })),
+            "YnoteToken: only master farmer can mint")
 
-        await this.YraceToken.mint(alice, '10000000000', { from: minter })
-        assert.equal((await this.YraceToken.balanceOf(alice)).valueOf(), "10000000000")
+        await this.YnoteToken.mint(alice, '10000000000', { from: minter })
+        assert.equal((await this.YnoteToken.balanceOf(alice)).valueOf(), "10000000000")
 
     })
 
@@ -53,8 +53,8 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
 
         it('should correct add new pool and set pool', async () => {
             // 100 per block, start at block 100
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 100, 100,500,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 100, 100,500,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true, { from: alice})
             assert.equal((await this.master.poolInfo(0)).lpToken.valueOf(), this.lp.address)
@@ -66,7 +66,7 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
 
             await expectRevert(
                 this.master.add('100', this.lp.address,1000, true, { from: alice}),
-                "YraceLPMaster::add: lp pool is already in pool"
+                "YnoteLPMaster::add: lp pool is already in pool"
             )
             await expectRevert(
                 this.master.add('100', this.lp2.address,500, true, { from: bob}),
@@ -90,8 +90,8 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
         })
 
         it('should allow emergency withdraw', async () => {
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 100,100,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 100,100,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true)
             await this.lp.approve(this.master.address, '1000', { from: bob })
@@ -100,13 +100,13 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
             await this.master.deposit(0, '100',constants.ZERO_ADDRESS, { from: bob })
             assert.equal((await this.lp.balanceOf(bob)).valueOf(), '900')
             await this.master.emergencyWithdraw(0, { from: bob })
-            assert.equal((await this.YraceToken.balanceOf(bob)).valueOf(), '0')
+            assert.equal((await this.YnoteToken.balanceOf(bob)).valueOf(), '0')
             assert.equal((await this.lp.balanceOf(bob)).valueOf(), '990')
         })
 
         it('should correct deposit', async () => {
-           this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 150,100,feeAddress, { from: alice })
-           await this.YraceToken.setMaster(this.master.address, { from: alice })
+           this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 150,100,feeAddress, { from: alice })
+           await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('200', this.lp.address,1000, true)
             await this.master.add('200', this.lp2.address,500, true)
@@ -115,7 +115,7 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
 
             await expectRevert(
                 this.master.deposit(0, '100',constants.ZERO_ADDRESS, { from: bob }),
-                "YraceLPMaster: Staking period has not started"
+                "YnoteLPMaster: Staking period has not started"
             )    
 
             await time.advanceBlockTo(149);
@@ -136,12 +136,12 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
             assert.notEqual((await this.master.poolInfo(0)).rewardPerShare.valueOf(), "0")
         })
 
-        it('should correct pending YraceToken & balance', async () => {
+        it('should correct pending YnoteToken & balance', async () => {
             // 10 per block farming rate starting at block 200
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 200, 100,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 200, 100,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
-            await this.YraceToken.transferOwnership(this.master.address, { from: alice })
+            await this.YnoteToken.transferOwnership(this.master.address, { from: alice })
             await this.master.add('200', this.lp.address,1000, true)
             await this.master.add('200', this.lp2.address,500, true)
             await this.lp.approve(this.master.address, '1000', { from: bob })
@@ -149,7 +149,7 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
 
             await expectRevert(
                 this.master.deposit(0, '100',constants.ZERO_ADDRESS, { from: bob }),
-                "YraceLPMaster: Staking period has not started"
+                "YnoteLPMaster: Staking period has not started"
             )    
 
             await time.advanceBlockTo(199);
@@ -165,14 +165,14 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
 
             await time.advanceBlockTo(249)
             await this.master.updatePool(0) //250
-            assert.equal((await this.YraceToken.totalSupply()).valueOf(), '2500')
+            assert.equal((await this.YnoteToken.totalSupply()).valueOf(), '2500')
 
             await time.advanceBlockTo(259)
             await this.master.deposit(0, 100,constants.ZERO_ADDRESS, { from: bob }) //260
             assert.equal((await this.master.pendingReward(0, bob)).valueOf(), '0') // when deposit, it will automatic harvest
-            assert.equal((await this.YraceToken.balanceOf(bob)).valueOf(),'2999')
+            assert.equal((await this.YnoteToken.balanceOf(bob)).valueOf(),'2999')
 
-            assert.equal((await this.YraceToken.balanceOf(this.master.address)).valueOf(), "1")
+            assert.equal((await this.YnoteToken.balanceOf(this.master.address)).valueOf(), "1")
 
             await time.advanceBlockTo(270)
             assert.equal((await this.master.pendingReward(0, bob)).valueOf(), '500')
@@ -194,42 +194,42 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
             assert.equal((await this.master.pendingReward(0, carol)).valueOf(), '167') 
         })
 
-        it('should not distribute YraceToken if no one deposit', async () => {
+        it('should not distribute YnoteToken if no one deposit', async () => {
             // 10 per block farming rate starting at block 400 
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 400,100,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 400,100,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
-            await this.YraceToken.transferOwnership(this.master.address, { from: alice })
+            await this.YnoteToken.transferOwnership(this.master.address, { from: alice })
             await this.master.add('100', this.lp.address,1000, true)
             await this.master.add('100', this.lp2.address,500, true)
 
             await this.lp.approve(this.master.address, '1000', { from: bob })
             await time.advanceBlockTo('430')
-            assert.equal((await this.YraceToken.totalSupply()).valueOf(), 0)
+            assert.equal((await this.YnoteToken.totalSupply()).valueOf(), 0)
             await time.advanceBlockTo('440')
-            assert.equal((await this.YraceToken.totalSupply()).valueOf(), 0)
+            assert.equal((await this.YnoteToken.totalSupply()).valueOf(), 0)
             await time.advanceBlockTo('450')
             await this.master.updatePool(0) 
-            assert.equal((await this.YraceToken.totalSupply()).valueOf(), 0)
-            assert.equal((await this.YraceToken.balanceOf(bob)).valueOf(), '0')
-            assert.equal((await this.YraceToken.balanceOf(dev)).valueOf(), '0')
+            assert.equal((await this.YnoteToken.totalSupply()).valueOf(), 0)
+            assert.equal((await this.YnoteToken.balanceOf(bob)).valueOf(), '0')
+            assert.equal((await this.YnoteToken.balanceOf(dev)).valueOf(), '0')
             await time.advanceBlockTo('459')
             await this.master.deposit(0, '100',constants.ZERO_ADDRESS, { from: bob }) 
             assert.equal((await this.lp.balanceOf(this.master.address)).valueOf(), '90')
-            assert.equal((await this.YraceToken.totalSupply()).valueOf(), 0)
-            assert.equal((await this.YraceToken.balanceOf(bob)).valueOf(), '0')
-            assert.equal((await this.YraceToken.balanceOf(dev)).valueOf(), '0')
+            assert.equal((await this.YnoteToken.totalSupply()).valueOf(), 0)
+            assert.equal((await this.YnoteToken.balanceOf(bob)).valueOf(), '0')
+            assert.equal((await this.YnoteToken.balanceOf(dev)).valueOf(), '0')
             assert.equal((await this.lp.balanceOf(bob)).valueOf(), '900')
 
             await time.advanceBlockTo('479')
             await this.master.withdraw(0,'50', { from: bob })
-            assert.equal(await this.YraceToken.balanceOf(bob).valueOf(),'999')
+            assert.equal(await this.YnoteToken.balanceOf(bob).valueOf(),'999')
         })
 
         it('should properly distribute tokens', async () => {
             // 10 blocks == 1000 tokens,,,500 per pool
-           this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 600,100,feeAddress, { from: alice })
-           await this.YraceToken.setMaster(this.master.address, { from: alice })
+           this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 600,100,feeAddress, { from: alice })
+           await this.YnoteToken.setMaster(this.master.address, { from: alice })
 
             await this.master.add('100', this.lp.address,1000, true)
             await this.lp.approve(this.master.address, '1000', { from: alice })
@@ -253,30 +253,30 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
             // console.log((await this.master.poolInfo(0)).rewardPerShare.valueOf()/1000000000000)
 
             await this.master.withdraw(0,90, { from: alice })           //550
-            assert.equal(await this.YraceToken.balanceOf(alice),'679');
+            assert.equal(await this.YnoteToken.balanceOf(alice),'679');
 
             await this.master.withdraw(0,90, { from: bob })             //551
-            assert.equal(await this.YraceToken.balanceOf(bob),'646');
+            assert.equal(await this.YnoteToken.balanceOf(bob),'646');
 
             await this.master.withdraw(0,90, { from: carol })           //552
-            assert.equal(await this.YraceToken.balanceOf(carol),'646');
+            assert.equal(await this.YnoteToken.balanceOf(carol),'646');
 
             await this.master.withdraw(0,90, { from: dev })             //553
-            assert.equal(await this.YraceToken.balanceOf(dev),'679');
+            assert.equal(await this.YnoteToken.balanceOf(dev),'679');
 
             await this.master.withdraw(1,90, { from: eliah })           //554
-            assert.equal(await this.YraceToken.balanceOf(eliah),'2499');          
+            assert.equal(await this.YnoteToken.balanceOf(eliah),'2499');          
 
             await expectRevert(
                 this.master.withdraw(0,5, { from: bob }),
-                "YraceLPMaster: No tokens staked"
+                "YnoteLPMaster: No tokens staked"
             )
 
         })
 
         it('should properly distribute at different deposit amounts', async () => {
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 700,100,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 700,100,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,1000, true)
              await this.lp.approve(this.master.address, '1000', { from: alice })
@@ -300,24 +300,24 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
              await time.advanceBlockTo('749')
  
              await this.master.withdraw(0,9, { from: alice })            //750
-             assert.equal(await this.YraceToken.balanceOf(alice),'309');
+             assert.equal(await this.YnoteToken.balanceOf(alice),'309');
 
              await this.master.withdraw(0,18, { from: bob })              //751
-             assert.equal(await this.YraceToken.balanceOf(bob),'532');
+             assert.equal(await this.YnoteToken.balanceOf(bob),'532');
 
              await this.master.withdraw(0,27, { from: carol })            //752
-             assert.equal(await this.YraceToken.balanceOf(carol),'769');
+             assert.equal(await this.YnoteToken.balanceOf(carol),'769');
 
             await this.master.withdraw(0,36, { from: dev })              //753
-            assert.equal(await this.YraceToken.balanceOf(dev),'1040');
+            assert.equal(await this.YnoteToken.balanceOf(dev),'1040');
             
             await this.master.withdraw(1,9, { from: eliah })            //754
-            assert.equal(await this.YraceToken.balanceOf(eliah),'2500');
+            assert.equal(await this.YnoteToken.balanceOf(eliah),'2500');
         })
 
         it('should distribute properly when multiple deposit', async () => {
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 800,100,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 800,100,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,1000, true)
              await this.lp.approve(this.master.address, '1000', { from: alice })
@@ -338,15 +338,15 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
             // ----- claiming anytime after sale end (equal distribution)
              await time.advanceBlockTo('899')
              await this.master.withdraw(0,9, { from: alice })
-             assert.equal(await this.YraceToken.balanceOf(alice),'2941');
+             assert.equal(await this.YnoteToken.balanceOf(alice),'2941');
  
              await this.master.withdraw(0,9, { from: bob })
-             assert.equal(await this.YraceToken.balanceOf(bob),'2071');         
+             assert.equal(await this.YnoteToken.balanceOf(bob),'2071');         
         }) 
 
         it('should allow deposit and partial withdraw at any time', async () => {
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 1000,100,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 1000,100,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,1000, true)
              await this.lp.approve(this.master.address, '1000', { from: alice })
@@ -368,13 +368,13 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
 
              await time.advanceBlockTo('1250')
              await this.master.withdraw(0,9, { from: alice })            
-             assert.equal(await this.YraceToken.balanceOf(alice),'1132');
+             assert.equal(await this.YnoteToken.balanceOf(alice),'1132');
 
              await this.master.withdraw(0,9, { from: bob })             
-             assert.equal(await this.YraceToken.balanceOf(bob),'865');
+             assert.equal(await this.YnoteToken.balanceOf(bob),'865');
              
             await this.master.withdraw(1,9, { from: eliah })           
-            assert.equal(await this.YraceToken.balanceOf(eliah),'1970');
+            assert.equal(await this.YnoteToken.balanceOf(eliah),'1970');
 
             await time.advanceBlockTo('1300')
             await this.master.deposit(0, 10,constants.ZERO_ADDRESS, { from: carol })  //1301
@@ -382,16 +382,16 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
 
             await time.advanceBlockTo('1350')
             await this.master.withdraw(0,9, { from: carol })            
-            assert.equal(await this.YraceToken.balanceOf(carol),'85');
+            assert.equal(await this.YnoteToken.balanceOf(carol),'85');
 
             await this.master.withdraw(0,9, { from: alice })  
-            assert.equal(await this.YraceToken.balanceOf(alice),'1951');
+            assert.equal(await this.YnoteToken.balanceOf(alice),'1951');
         })
 
         
         it('should pay to referrer address if a user is referred by it', async () => {
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 1400,100,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 1400,100,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
  
              await this.master.add('100', this.lp.address,1000, true)
              await this.lp.approve(this.master.address, '1000', { from: alice })
@@ -402,7 +402,7 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
              await time.advanceBlockTo('1399')
              await this.master.deposit(0, 10,carol, { from: alice }) 
              await this.master.deposit(0, 10,constants.ZERO_ADDRESS, { from: bob })
-             assert.equal(await this.YraceToken.balanceOf(carol),'0'); 
+             assert.equal(await this.YnoteToken.balanceOf(carol),'0'); 
 
             await this.master.updateReferralBonusBp(500,{ from: alice })
 
@@ -414,18 +414,18 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
              await this.master.withdraw(0,4, { from: alice })
 
              await expectRevert(this.master.withdraw(0,9, { from: bob }),
-             "YraceLPMaster: No tokens staked"
+             "YnoteLPMaster: No tokens staked"
              )
 
-             assert.equal(await this.YraceToken.balanceOf(alice),'3740'); 
-             assert.equal(await this.YraceToken.balanceOf(bob),'1285'); 
-             assert.equal(await this.YraceToken.balanceOf(carol),'186'); 
+             assert.equal(await this.YnoteToken.balanceOf(alice),'3740'); 
+             assert.equal(await this.YnoteToken.balanceOf(bob),'1285'); 
+             assert.equal(await this.YnoteToken.balanceOf(carol),'186'); 
         }) 
 
         
         it('should not be referred by multiple referrers', async () => {
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 1550,100,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 1550,100,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
  
             await this.master.add('100', this.lp.address,1000, true)
             await this.lp.approve(this.master.address, '1000', { from: alice })
@@ -443,22 +443,22 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
             await this.master.withdraw(0,18, { from: alice })
             await this.master.withdraw(0,9, { from: bob })
 
-            assert.equal(await this.YraceToken.balanceOf(alice),'2941'); 
-            assert.equal(await this.YraceToken.balanceOf(bob),'2084'); 
-            assert.equal(await this.YraceToken.balanceOf(carol),'58');
-            assert.equal(await this.YraceToken.balanceOf(dev),'0');         
+            assert.equal(await this.YnoteToken.balanceOf(alice),'2941'); 
+            assert.equal(await this.YnoteToken.balanceOf(bob),'2084'); 
+            assert.equal(await this.YnoteToken.balanceOf(carol),'58');
+            assert.equal(await this.YnoteToken.balanceOf(dev),'0');         
         }) 
 
         it('should allow original fee address to change feeAddress', async () => {
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 10, 1700,100,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 10, 1700,100,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
             await expectRevert(
                 this.master.setFeeAddress(dev, { from: alice }),
-                "YraceLPMaster: forbidden from change"    
+                "YnoteLPMaster: forbidden from change"    
             )
             await expectRevert(
                 this.master.setFeeAddress(constants.ZERO_ADDRESS, { from: feeAddress }),
-                "YraceLPMaster: fee address cant be zero address"    
+                "YnoteLPMaster: fee address cant be zero address"    
             )
 
             await this.master.setFeeAddress(eliah, { from: feeAddress })
@@ -480,17 +480,17 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
             await this.master.withdraw(0,18, { from: alice })
             await this.master.withdraw(0,9, { from: bob })
 
-            assert.equal(await this.YraceToken.balanceOf(alice),'2941'); 
-            assert.equal(await this.YraceToken.balanceOf(bob),'2084'); 
-            assert.equal(await this.YraceToken.balanceOf(carol),'58');
-            assert.equal(await this.YraceToken.balanceOf(dev),'0');
+            assert.equal(await this.YnoteToken.balanceOf(alice),'2941'); 
+            assert.equal(await this.YnoteToken.balanceOf(bob),'2084'); 
+            assert.equal(await this.YnoteToken.balanceOf(carol),'58');
+            assert.equal(await this.YnoteToken.balanceOf(dev),'0');
             
             assert.equal(await this.lp.balanceOf(eliah),'1003');
         }) 
 
         it('should switch master from seed to LP after staking period', async () => {
-            this.master = await YraceSeedMaster.new(this.YraceToken.address, 10, 1900,2000,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteSeedMaster.new(this.YnoteToken.address, 10, 1900,2000,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
  
             await this.master.add('100', this.lp.address,1000, true)
             await this.lp.approve(this.master.address, '1000', { from: alice })
@@ -513,13 +513,13 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
              await time.advanceBlockTo('1950')
              await this.master.deposit(0, 100,constants.ZERO_ADDRESS, { from: alice })
              await this.master.withdraw(1, 45, { from: carol })
-             assert.equal(await this.YraceToken.balanceOf(carol),'0');
+             assert.equal(await this.YnoteToken.balanceOf(carol),'0');
 
              await time.advanceBlockTo('1974')
              await this.master.deposit(1, 100,constants.ZERO_ADDRESS, { from: carol }) 
 
             
-             this.master2 = await YraceLPMaster.new(this.YraceToken.address, 10, 2000,100,feeAddress, { from: alice })
+             this.master2 = await YnoteLPMaster.new(this.YnoteToken.address, 10, 2000,100,feeAddress, { from: alice })
  
              await this.master2.add('100', this.lp.address,1000, true)
              await this.lp.approve(this.master2.address, '1000', { from: alice })
@@ -532,14 +532,14 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
 
              await time.advanceBlockTo('2000')
              await this.master.massUpdatePools();
-             await this.YraceToken.setMaster(this.master2.address, { from: alice })
+             await this.YnoteToken.setMaster(this.master2.address, { from: alice })
 
 
              await this.master.harvest(0, { from: alice })
-             assert.equal(await this.YraceToken.balanceOf(alice),'293');
+             assert.equal(await this.YnoteToken.balanceOf(alice),'293');
  
              await this.master.harvest(0, { from: bob })
-             assert.equal(await this.YraceToken.balanceOf(bob),'207');    
+             assert.equal(await this.YnoteToken.balanceOf(bob),'207');    
 
        
              await this.master2.deposit(0, 10,constants.ZERO_ADDRESS, { from: alice })  
@@ -549,33 +549,33 @@ contract('YraceLPMaster', ([alice, bob, carol, dev, eliah, minter,feeAddress]) =
              await this.master2.deposit(1, 10,constants.ZERO_ADDRESS, { from: eliah })  
  
              await this.master.harvest(1, { from: carol })
-             assert.equal(await this.YraceToken.balanceOf(carol),'241');
+             assert.equal(await this.YnoteToken.balanceOf(carol),'241');
  
              await this.master.harvest(1, { from: dev })
-             assert.equal(await this.YraceToken.balanceOf(dev),'249');     
+             assert.equal(await this.YnoteToken.balanceOf(dev),'249');     
              
              await time.advanceBlockTo('2049')
  
              await this.master2.withdraw(0,9, { from: alice })            
-             assert.equal(await this.YraceToken.balanceOf(alice),'577');
+             assert.equal(await this.YnoteToken.balanceOf(alice),'577');
 
              await this.master2.withdraw(0,18, { from: bob })           
-             assert.equal(await this.YraceToken.balanceOf(bob),'689');
+             assert.equal(await this.YnoteToken.balanceOf(bob),'689');
 
              await this.master2.withdraw(0,27, { from: carol })        
-             assert.equal(await this.YraceToken.balanceOf(carol),'935');
+             assert.equal(await this.YnoteToken.balanceOf(carol),'935');
 
             await this.master2.withdraw(0,36, { from: dev })             
-            assert.equal(await this.YraceToken.balanceOf(dev),'1189');
+            assert.equal(await this.YnoteToken.balanceOf(dev),'1189');
             
             await this.master2.withdraw(1,9, { from: eliah })           
-            assert.equal(await this.YraceToken.balanceOf(eliah),'2250');
+            assert.equal(await this.YnoteToken.balanceOf(eliah),'2250');
  
          })
 
          it('should return reward per block for the stage', async () => {
-            this.master = await YraceLPMaster.new(this.YraceToken.address, 1, 2100,10,feeAddress, { from: alice })
-            await this.YraceToken.setMaster(this.master.address, { from: alice })
+            this.master = await YnoteLPMaster.new(this.YnoteToken.address, 1, 2100,10,feeAddress, { from: alice })
+            await this.YnoteToken.setMaster(this.master.address, { from: alice })
             await time.advanceBlockTo('2105')
             assert.equal(await this.master.getRewardPerBlock(),10)
             await time.advanceBlockTo('2115')
